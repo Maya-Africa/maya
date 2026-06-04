@@ -28,6 +28,31 @@ export async function GET(req: NextRequest) {
           where: { id: payment.orderId },
           data: { status: 'PAID', paidAt: new Date(result.paid_at!) },
         })
+
+        // Auto-create escrow for this order if it doesn't exist yet
+        const order = await tx.order.findUnique({
+          where: { id: payment.orderId },
+          include: { items: { include: { product: true } } },
+        })
+        const existingEscrow = order
+          ? await tx.escrow.findUnique({ where: { orderId: payment.orderId } })
+          : null
+        if (order && !existingEscrow) {
+          const title = order.items[0]?.product.title
+            ? `Order: ${order.items[0].product.title}`
+            : `Order #${order.id.slice(0, 8)}`
+          await tx.escrow.create({
+            data: {
+              buyerId: order.buyerId,
+              sellerId: order.sellerId,
+              orderId: order.id,
+              title,
+              amountKobo: BigInt(payment.amountKobo),
+              status: 'FUNDED',
+              fundedAt: new Date(result.paid_at!),
+            },
+          })
+        }
       }
 
       if (payment.escrowId) {

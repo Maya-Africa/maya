@@ -2,20 +2,30 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useSession } from '@/lib/auth/use-session'
 
 export default function BottomNavigation() {
   const pathname = usePathname()
+  const { user } = useSession()
+  const isSeller = user?.role === 'SELLER'
 
-  const tabs = [
-    { id: 'explore', label: 'Explore', href: '/' },
-    { id: 'products', label: 'Products', href: pathname.startsWith('/seller') ? '/seller' : '/products' },
-    { id: 'profile', label: 'Profile', href: '/profile' },
-  ]
+  const tabs = isSeller
+    ? [
+        { id: 'explore', label: 'Explore', href: '/' },
+        { id: 'products', label: 'Products', href: '/seller' },
+        { id: 'profile', label: 'Profile', href: '/profile' },
+      ]
+    : [
+        { id: 'explore', label: 'Explore', href: '/' },
+        { id: 'orders', label: 'Orders', href: '/buyer/orders' },
+        { id: 'profile', label: 'Profile', href: '/profile' },
+      ]
 
   const getActiveTab = () => {
     if (pathname === '/') return 'explore'
     if (pathname.startsWith('/seller')) return 'products'
     if (pathname.startsWith('/products')) return 'products'
+    if (pathname.startsWith('/buyer/orders')) return 'orders'
     if (pathname.startsWith('/profile')) return 'profile'
     return 'explore'
   }
@@ -58,6 +68,12 @@ export default function BottomNavigation() {
                   <rect x="4" y="13" width="7" height="7" />
                   <rect x="13" y="13" width="7" height="7" />
                 </g>
+              )}
+              {tab.id === 'orders' && (
+                <path
+                  d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"
+                  fill="currentColor"
+                />
               )}
               {tab.id === 'profile' && (
                 <path

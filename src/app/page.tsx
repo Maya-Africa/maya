@@ -1,17 +1,12 @@
 import Link from 'next/link'
-import { ChevronRight, Shield, Clock, Wrench, Scissors, Paintbrush, Hammer, Gem, Package, Star } from 'lucide-react'
+import { ChevronRight, Shield, Scissors, Hammer, Gem, Paintbrush, Wrench, Package, Star } from 'lucide-react'
 import { prisma } from '@/lib/db'
 
-const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  tailoring: Scissors,
-  carpentry: Hammer,
-  jewelry: Gem,
-  art: Paintbrush,
-  ceramics: Package,
-  leather: Package,
-  repairs: Wrench,
-  crafts: Package,
-  other: Package,
+const NGN_PER_BTC = 145_000_000n
+const SATS_PER_BTC = 100_000_000n
+
+function satsToNgn(sats: bigint) {
+  return Number((sats * NGN_PER_BTC) / SATS_PER_BTC)
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -26,190 +21,119 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: 'Other',
 }
 
-const CATEGORIES = [
-  { key: 'tailoring', label: 'Tailoring & Fashion', Icon: Scissors },
-  { key: 'carpentry', label: 'Carpentry & Wood', Icon: Hammer },
-  { key: 'jewelry', label: 'Jewellery', Icon: Gem },
-  { key: 'art', label: 'Art & Painting', Icon: Paintbrush },
-  { key: 'ceramics', label: 'Ceramics', Icon: Package },
-  { key: 'repairs', label: 'Repairs', Icon: Wrench },
-]
-
-// NGN display helper — matches server's DEMO_BTC_NGN_RATE
-function satsToNgn(sats: bigint): number {
-  return Number((sats * 145_000_000n) / 100_000_000n)
-}
-
-async function getFeaturedProducts() {
+async function getFeatured() {
   try {
-    const products = await prisma.product.findMany({
+    return await prisma.product.findMany({
       where: { status: 'ACTIVE' },
       include: { seller: { select: { username: true, displayName: true } } },
       orderBy: { createdAt: 'desc' },
       take: 8,
     })
-    return products
-  } catch {
-    return []
-  }
+  } catch { return [] }
 }
 
 export default async function LandingPage() {
-  const featuredProducts = await getFeaturedProducts()
-  const hasProducts = featuredProducts.length > 0
+  const products = await getFeatured()
 
   return (
-    <div className="bg-background text-foreground">
+    <div style={{ background: '#FAFAF8', color: '#0F1923', fontFamily: 'var(--font-inter, system-ui, sans-serif)' }}>
 
-      {/* ── NAVIGATION ─────────────────────────────────────────────────────── */}
-      <nav className="fixed top-0 z-50 w-full bg-background/95 backdrop-blur-md border-b border-border">
-        <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8 py-0 flex items-center justify-between h-16">
-          {/* Wordmark */}
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-              <span className="font-serif text-primary-foreground text-lg font-normal leading-none">M</span>
+      {/* ━━━ NAV ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <nav style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(250,250,248,0.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #E8E4DE' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 20px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: '#1A2E44', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <span style={{ fontFamily: 'var(--font-dm-serif)', color: '#fff', fontSize: 18, lineHeight: 1 }}>M</span>
             </div>
-            <span className="font-serif text-xl font-normal tracking-tight">Maya</span>
+            <span style={{ fontFamily: 'var(--font-dm-serif)', fontSize: 22, color: '#0F1923', letterSpacing: '-0.02em' }}>Maya</span>
           </Link>
 
-          <div className="hidden md:flex items-center gap-6">
-            <Link href="/marketplace" className="font-sans text-sm text-muted hover:text-foreground transition-colors">Browse</Link>
-            <Link href="/sell" className="font-sans text-sm text-muted hover:text-foreground transition-colors">Sell</Link>
-            <Link href="/signin" className="font-sans text-sm text-muted hover:text-foreground transition-colors">Sign in</Link>
-            <Link href="/sell" className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-sans text-sm font-medium hover:bg-primary/90 transition-colors">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 28 }} className="hidden md:flex">
+            {([['Browse', '/marketplace'], ['Sell on Maya', '/sell'], ['Sign in', '/signin']] as [string,string][]).map(([label, href]: [string,string]) => (
+              <Link key={label} href={href} style={{ fontFamily: 'inherit', fontSize: 14, color: '#7A7065', textDecoration: 'none' }}
+                className="hover:text-[#0F1923] transition-colors">{label}</Link>
+            ))}
+            <Link href="/sell" style={{ background: '#1A2E44', color: '#fff', padding: '9px 20px', borderRadius: 10, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}
+              className="hover:opacity-90 transition-opacity">
               Open shop
             </Link>
           </div>
 
-          <Link href="/sell" className="md:hidden bg-primary text-primary-foreground px-3.5 py-2 rounded-lg font-sans text-sm font-medium">
-            Start selling
-          </Link>
+          <Link href="/sell" style={{ background: '#1A2E44', color: '#fff', padding: '8px 16px', borderRadius: 10, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}
+            className="md:hidden">Start selling</Link>
         </div>
       </nav>
 
-      {/* ── HERO ───────────────────────────────────────────────────────────── */}
-      <section className="pt-16 min-h-[90vh] flex items-center relative overflow-hidden">
-        {/* Background decoration */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-20 right-0 w-[600px] h-[600px] bg-accent/5 rounded-full -translate-y-1/4 translate-x-1/3" />
-          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-primary/5 rounded-full translate-y-1/3 -translate-x-1/4" />
-        </div>
+      {/* ━━━ HERO ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section style={{ maxWidth: 1280, margin: '0 auto', padding: '72px 20px 80px' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
 
-        <div className="relative mx-auto max-w-7xl px-5 sm:px-6 lg:px-8 py-20 w-full">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-
-            {/* Left — copy */}
-            <div className="space-y-8">
-              <div className="inline-flex items-center gap-2 bg-accent/10 text-accent border border-accent/20 px-3.5 py-1.5 rounded-full font-sans text-xs font-semibold tracking-wide uppercase">
-                <Shield className="w-3 h-3" /> Escrow-protected payments
-              </div>
-
-              <div className="space-y-4">
-                <h1 className="font-serif text-6xl sm:text-7xl lg:text-8xl font-normal leading-[0.95] tracking-tight">
-                  <span className="text-foreground">Your craft.</span><br />
-                  <span className="text-primary">Your price.</span><br />
-                  <span className="text-foreground">Get paid.</span>
-                </h1>
-                <p className="font-sans text-lg text-muted max-w-md leading-relaxed">
-                  The marketplace for every skilled trade in Nigeria — tailors, carpenters, jewellers, potters, repair specialists, and more.
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                {[
-                  { icon: Shield, text: 'Escrow holds buyer money until you deliver' },
-                  { icon: Clock, text: 'Milestone payments for big projects' },
-                  { icon: Wrench, text: 'Pay & receive in naira via Paystack' },
-                ].map(({ icon: Icon, text }) => (
-                  <div key={text} className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Icon className="w-3 h-3 text-primary" />
-                    </div>
-                    <span className="font-sans text-sm text-foreground">{text}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <Link href="/sell" className="inline-flex items-center justify-center bg-primary text-primary-foreground px-7 py-3.5 rounded-xl font-sans font-semibold text-sm hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
-                  Open your shop — free
-                </Link>
-                <Link href="/marketplace" className="inline-flex items-center justify-center bg-card border border-border text-foreground px-7 py-3.5 rounded-xl font-sans font-semibold text-sm hover:bg-border/40 transition-colors">
-                  Browse marketplace
-                </Link>
-              </div>
-
-              <p className="font-sans text-xs text-muted">No registration fee · 2% per sale · Naira payouts</p>
+          {/* Copy */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(194,105,47,0.1)', border: '1px solid rgba(194,105,47,0.25)', color: '#C2692F', padding: '6px 14px', borderRadius: 999, fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', width: 'fit-content' }}>
+              <Shield style={{ width: 13, height: 13 }} />
+              ESCROW-PROTECTED PAYMENTS
             </div>
 
-            {/* Right — escrow mockup card */}
-            <div className="hidden lg:block">
-              <div className="relative">
-                {/* Shadow card behind */}
-                <div className="absolute inset-0 bg-primary/10 rounded-2xl translate-x-3 translate-y-3" />
-                <div className="relative bg-card border border-border rounded-2xl p-6 shadow-xl space-y-4">
-                  {/* Header */}
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-sans text-xs text-muted uppercase tracking-wide font-medium mb-0.5">Active order</p>
-                      <p className="font-sans text-sm font-semibold">Custom wardrobe — Abuja</p>
-                    </div>
-                    <span className="bg-accent/15 text-accent text-xs font-sans px-2.5 py-1 rounded-full font-semibold">In Escrow</span>
-                  </div>
+            <div>
+              <h1 style={{ fontFamily: 'var(--font-dm-serif)', fontSize: 'clamp(52px, 8vw, 80px)', lineHeight: 0.97, letterSpacing: '-0.03em', margin: 0 }}>
+                <span style={{ color: '#0F1923' }}>Your craft.</span><br />
+                <span style={{ color: '#C2692F' }}>Your price.</span><br />
+                <span style={{ color: '#1A2E44' }}>Get paid.</span>
+              </h1>
+              <p style={{ fontSize: 17, color: '#7A7065', lineHeight: 1.65, marginTop: 20, maxWidth: 440 }}>
+                The trusted marketplace for every skilled trade in Nigeria — tailors, carpenters, jewellers, potters, repair specialists. Secure escrow on every order.
+              </p>
+            </div>
 
-                  {/* Progress bar */}
-                  <div>
-                    <div className="flex justify-between text-xs font-sans text-muted mb-1.5">
-                      <span>2 of 4 milestones done</span>
-                      <span>₦90,000 total</span>
-                    </div>
-                    <div className="h-1.5 bg-border rounded-full overflow-hidden">
-                      <div className="h-full w-1/2 bg-primary rounded-full" />
-                    </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[
+                'Escrow holds buyer money until you deliver',
+                'Milestone payments for large projects',
+                'Pay and receive in naira via Paystack',
+                'No business registration required',
+              ].map(t => (
+                <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(194,105,47,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span style={{ color: '#C2692F', fontSize: 11, fontWeight: 700 }}>✓</span>
                   </div>
+                  <span style={{ fontSize: 14, color: '#3A3530' }}>{t}</span>
+                </div>
+              ))}
+            </div>
 
-                  {/* Milestones */}
-                  <div className="space-y-2.5">
-                    {[
-                      { label: 'Measurements & deposit', amount: '₦15,000', done: true },
-                      { label: 'Frame & lining', amount: '₦25,000', done: true },
-                      { label: 'Fitting session', amount: '₦20,000', done: false, active: true },
-                      { label: 'Final delivery', amount: '₦30,000', done: false },
-                    ].map((m, i) => (
-                      <div key={i} className={`flex items-center gap-3 p-3 rounded-xl border text-sm ${
-                        m.active ? 'border-accent/40 bg-accent/5' :
-                        m.done ? 'border-border/40 bg-border/10' :
-                        'border-border/20 opacity-50'
-                      }`}>
-                        <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${
-                          m.done ? 'bg-primary text-primary-foreground' :
-                          m.active ? 'bg-accent text-white' :
-                          'bg-border text-muted'
-                        }`}>
-                          {m.done ? '✓' : i + 1}
-                        </div>
-                        <span className={`font-sans flex-1 ${m.done ? 'text-muted line-through' : 'text-foreground'}`}>{m.label}</span>
-                        <span className="font-sans font-semibold text-foreground">{m.amount}</span>
-                        {m.active && (
-                          <span className="bg-accent text-white text-[10px] px-2 py-0.5 rounded-full font-sans font-semibold">Release →</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <Link href="/sell" style={{ background: '#1A2E44', color: '#fff', padding: '14px 28px', borderRadius: 12, fontWeight: 700, fontSize: 15, textDecoration: 'none', boxShadow: '0 4px 24px rgba(26,46,68,0.22)' }}
+                className="hover:opacity-90 transition-opacity">
+                Open your shop — free
+              </Link>
+              <Link href="/marketplace" style={{ background: '#fff', color: '#0F1923', padding: '14px 28px', borderRadius: 12, fontWeight: 600, fontSize: 15, textDecoration: 'none', border: '1.5px solid #E8E4DE' }}
+                className="hover:border-[#1A2E44] transition-colors">
+                Browse marketplace
+              </Link>
+            </div>
+          </div>
 
-                  {/* Footer */}
-                  <div className="flex items-center justify-between pt-2 border-t border-border">
-                    <div>
-                      <p className="font-sans text-[11px] text-muted">Released so far</p>
-                      <p className="font-serif text-2xl text-primary font-normal">₦40,000</p>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Shield className="w-3 h-3 text-primary" />
-                      </div>
-                      <span className="font-sans text-xs text-muted font-medium">Both sides protected</span>
-                    </div>
-                  </div>
+          {/* Hero image */}
+          <div style={{ position: 'relative' }} className="hidden lg:block">
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(194,105,47,0.08) 0%, rgba(26,46,68,0.06) 100%)', borderRadius: 24, transform: 'translate(12px, 12px)' }} />
+            <div style={{ position: 'relative', borderRadius: 24, overflow: 'hidden', height: 520 }}>
+              <img
+                src="/hero-artisan.jpg"
+                alt="Skilled artisan at work"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+              {/* Floating escrow card */}
+              <div style={{ position: 'absolute', bottom: 24, left: 24, right: 24, background: 'rgba(255,255,255,0.96)', backdropFilter: 'blur(16px)', borderRadius: 16, padding: '16px 20px', border: '1px solid rgba(232,228,222,0.8)', boxShadow: '0 8px 32px rgba(15,25,35,0.12)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#7A7065', letterSpacing: '0.06em' }}>ESCROW BALANCE</span>
+                  <span style={{ background: 'rgba(194,105,47,0.12)', color: '#C2692F', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999 }}>Protected</span>
+                </div>
+                <div style={{ fontFamily: 'var(--font-dm-serif)', fontSize: 28, color: '#1A2E44', marginBottom: 8 }}>₦127,500</div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {['Design ✓', 'Frame ✓', 'Finish →', 'Delivery'].map((s, i) => (
+                    <div key={s} style={{ flex: 1, textAlign: 'center', background: i < 2 ? '#1A2E44' : i === 2 ? '#C2692F' : '#F2EFE9', color: i < 3 ? '#fff' : '#7A7065', fontSize: 10, fontWeight: 600, padding: '5px 0', borderRadius: 6 }}>{s}</div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -217,106 +141,106 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* ── TRUST BAR ──────────────────────────────────────────────────────── */}
-      <div className="border-y border-border bg-card">
-        <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10">
-            {[
-              { value: '2%', label: 'platform fee' },
-              { value: '₦0', label: 'to list' },
-              { value: 'Paystack', label: 'payments' },
-              { value: 'Escrow', label: 'protection' },
-              { value: 'Naira', label: 'payouts' },
-            ].map(({ value, label }) => (
-              <div key={label} className="flex items-center gap-2">
-                <span className="font-serif text-lg text-primary font-normal">{value}</span>
-                <span className="font-sans text-xs text-muted">{label}</span>
-              </div>
-            ))}
-          </div>
+      {/* ━━━ TRUST BAR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <div style={{ borderTop: '1px solid #E8E4DE', borderBottom: '1px solid #E8E4DE', background: '#fff' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '16px 20px', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px 32px' }}>
+          {[
+            ['2%', 'platform fee'],
+            ['₦0', 'to list'],
+            ['Paystack', 'payments'],
+            ['Escrow', 'on every order'],
+            ['Naira', 'direct payouts'],
+          ].map(([val, label]) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <span style={{ fontFamily: 'var(--font-dm-serif)', fontSize: 17, color: '#1A2E44' }}>{val}</span>
+              <span style={{ fontSize: 12, color: '#7A7065' }}>{label}</span>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* ── CATEGORIES ─────────────────────────────────────────────────────── */}
-      <section className="py-16 sm:py-20">
-        <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-          <div className="flex items-baseline justify-between mb-10">
-            <div>
-              <h2 className="font-serif text-4xl sm:text-5xl font-normal">Every trade.</h2>
-              <p className="font-sans text-base text-muted mt-1">One trusted platform.</p>
-            </div>
-            <Link href="/marketplace" className="font-sans text-sm text-primary font-semibold flex items-center gap-1 hover:gap-2 transition-all">
-              Browse all <ChevronRight className="w-4 h-4" />
+      {/* ━━━ CATEGORIES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section style={{ maxWidth: 1280, margin: '0 auto', padding: '72px 20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 40 }}>
+          <div>
+            <h2 style={{ fontFamily: 'var(--font-dm-serif)', fontSize: 'clamp(36px, 4vw, 52px)', margin: 0, color: '#0F1923' }}>Every trade.</h2>
+            <p style={{ fontSize: 15, color: '#7A7065', marginTop: 4 }}>One trusted platform.</p>
+          </div>
+          <Link href="/marketplace" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 14, fontWeight: 600, color: '#1A2E44', textDecoration: 'none' }} className="hover:text-accent transition-colors">
+            Browse all <ChevronRight style={{ width: 16, height: 16 }} />
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[
+            { key: 'tailoring', label: 'Tailoring & Fashion', Icon: Scissors, img: '/artwork-1.jpg' },
+            { key: 'carpentry', label: 'Carpentry & Wood', Icon: Hammer, img: '/artwork-3.jpg' },
+            { key: 'jewelry', label: 'Jewellery', Icon: Gem, img: '/artwork-4.jpg' },
+            { key: 'art', label: 'Art & Painting', Icon: Paintbrush, img: '/artwork-2.jpg' },
+            { key: 'ceramics', label: 'Ceramics', Icon: Package, img: '/artwork-7.jpg' },
+            { key: 'repairs', label: 'Repairs & Service', Icon: Wrench, img: '/artwork-5.jpg' },
+          ].map(({ key, label, img }) => (
+            <Link key={key} href={`/marketplace?category=${key}`} style={{ textDecoration: 'none', borderRadius: 16, overflow: 'hidden', position: 'relative', aspectRatio: '1', display: 'block' }}
+              className="group">
+              <img src={img} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s' }}
+                className="group-hover:scale-105" />
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(15,25,35,0.72) 0%, transparent 55%)' }} />
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '12px 14px' }}>
+                <p style={{ color: '#fff', fontWeight: 700, fontSize: 12, margin: 0, letterSpacing: '0.01em' }}>{label}</p>
+              </div>
             </Link>
-          </div>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-            {CATEGORIES.map(({ key, label, Icon }) => (
-              <Link
-                key={key}
-                href={`/marketplace?category=${key}`}
-                className="group flex flex-col items-center gap-3 p-4 sm:p-5 rounded-2xl bg-card border border-border hover:border-primary/40 hover:bg-primary/5 hover:shadow-sm transition-all"
-              >
-                <div className="w-11 h-11 rounded-xl bg-primary/8 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
-                  <Icon className="w-5 h-5 text-primary" />
-                </div>
-                <span className="font-sans text-[11px] sm:text-xs font-medium text-center leading-tight text-muted group-hover:text-foreground transition-colors">{label}</span>
-              </Link>
-            ))}
-          </div>
+          ))}
         </div>
       </section>
 
-      {/* ── ON MAYA NOW ────────────────────────────────────────────────────── */}
-      <section className="py-16 sm:py-20 bg-card border-y border-border">
-        <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-          <div className="flex items-baseline justify-between mb-10">
+      {/* ━━━ ON MAYA NOW ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section style={{ background: '#fff', borderTop: '1px solid #E8E4DE', borderBottom: '1px solid #E8E4DE', padding: '72px 0' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 40 }}>
             <div>
-              <h2 className="font-serif text-4xl sm:text-5xl font-normal">On Maya now</h2>
-              <p className="font-sans text-sm text-muted mt-1">Latest listings from skilled sellers</p>
+              <h2 style={{ fontFamily: 'var(--font-dm-serif)', fontSize: 'clamp(36px, 4vw, 52px)', margin: 0, color: '#0F1923' }}>On Maya now</h2>
+              <p style={{ fontSize: 15, color: '#7A7065', marginTop: 4 }}>Latest listings from skilled sellers</p>
             </div>
-            <Link href="/marketplace" className="font-sans text-sm text-primary font-semibold flex items-center gap-1 hover:gap-2 transition-all">
-              See all <ChevronRight className="w-4 h-4" />
+            <Link href="/marketplace" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 14, fontWeight: 600, color: '#1A2E44', textDecoration: 'none' }}>
+              See all <ChevronRight style={{ width: 16, height: 16 }} />
             </Link>
           </div>
 
-          {hasProducts ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
-              {featuredProducts.map((product) => (
-                <Link key={product.id} href={`/products/${product.id}`} className="group">
-                  <div className="relative overflow-hidden rounded-2xl bg-border/30 aspect-square mb-3">
-                    {product.images[0] ? (
-                      <img
-                        src={product.images[0]}
-                        alt={product.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
+          {products.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {products.map((p) => (
+                <Link key={p.id} href={`/products/${p.id}`} style={{ textDecoration: 'none' }} className="group">
+                  <div style={{ borderRadius: 16, overflow: 'hidden', aspectRatio: '1', background: '#F2EFE9', position: 'relative', marginBottom: 12 }}>
+                    {p.images[0] ? (
+                      <img src={p.images[0]} alt={p.title} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s' }} className="group-hover:scale-105" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-border/40">
-                        <Package className="w-10 h-10 text-muted/30" />
+                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Package style={{ width: 40, height: 40, color: '#C8C0B5' }} />
                       </div>
                     )}
-                    {/* Category badge */}
-                    <span className="absolute top-2.5 left-2.5 bg-background/90 backdrop-blur-sm text-[10px] font-sans font-semibold px-2 py-1 rounded-full text-muted uppercase tracking-wide">
-                      {CATEGORY_LABELS[product.category] ?? product.category}
-                    </span>
+                    {/* Category pill */}
+                    <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(255,255,255,0.92)', fontSize: 10, fontWeight: 700, padding: '4px 10px', borderRadius: 999, color: '#3A3530', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                      {CATEGORY_LABELS[p.category] ?? p.category}
+                    </div>
+                    {/* Escrow shield */}
+                    <div style={{ position: 'absolute', bottom: 10, right: 10, background: 'rgba(26,46,68,0.88)', display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 999 }}>
+                      <Shield style={{ width: 10, height: 10, color: '#fff' }} />
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>ESCROW</span>
+                    </div>
                   </div>
-                  <div className="px-0.5">
-                    <h3 className="font-sans text-sm font-semibold leading-snug mb-0.5 text-foreground group-hover:text-primary transition-colors line-clamp-1">{product.title}</h3>
-                    <p className="font-sans text-xs text-muted mb-2">{product.seller.displayName ?? product.seller.username}</p>
-                    <p className="font-sans text-sm font-bold text-accent">₦{satsToNgn(product.priceSats).toLocaleString('en-NG')}</p>
-                  </div>
+                  <p style={{ fontSize: 12, color: '#7A7065', margin: '0 0 3px' }}>{p.seller.displayName ?? p.seller.username}</p>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: '#0F1923', margin: '0 0 5px', lineHeight: 1.3 }} className="group-hover:text-[#1A2E44] transition-colors line-clamp-1">{p.title}</p>
+                  <p style={{ fontSize: 15, fontWeight: 700, color: '#C2692F', margin: 0 }}>₦{satsToNgn(p.priceSats).toLocaleString('en-NG')}</p>
                 </Link>
               ))}
             </div>
           ) : (
-            /* Empty state — encourage first sellers */
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-5">
-                <Package className="w-7 h-7 text-primary" />
+            <div style={{ textAlign: 'center', padding: '60px 0' }}>
+              <div style={{ width: 64, height: 64, borderRadius: 16, background: 'rgba(26,46,68,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                <Package style={{ width: 28, height: 28, color: '#1A2E44' }} />
               </div>
-              <h3 className="font-serif text-2xl font-normal mb-2">Be one of the first</h3>
-              <p className="font-sans text-sm text-muted max-w-sm mb-6">No listings yet. Open your shop and be among the first sellers on Maya.</p>
-              <Link href="/sell" className="inline-flex items-center justify-center bg-primary text-primary-foreground px-6 py-3 rounded-xl font-sans text-sm font-semibold hover:bg-primary/90 transition-colors">
+              <h3 style={{ fontFamily: 'var(--font-dm-serif)', fontSize: 24, margin: '0 0 8px', color: '#0F1923' }}>Be one of the first</h3>
+              <p style={{ fontSize: 14, color: '#7A7065', margin: '0 0 20px', maxWidth: 320, marginLeft: 'auto', marginRight: 'auto' }}>No listings yet. Open your shop and be among the first sellers on Maya.</p>
+              <Link href="/sell" style={{ display: 'inline-block', background: '#1A2E44', color: '#fff', padding: '12px 24px', borderRadius: 12, fontWeight: 700, fontSize: 14, textDecoration: 'none' }}>
                 Open your shop
               </Link>
             </div>
@@ -324,53 +248,51 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* ── ESCROW EXPLAINED ───────────────────────────────────────────────── */}
-      <section className="py-16 sm:py-24 bg-primary text-primary-foreground overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full translate-x-1/2 -translate-y-1/2 pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 rounded-full -translate-x-1/3 translate-y-1/3 pointer-events-none" />
-
-        <div className="relative mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
+      {/* ━━━ ESCROW FEATURE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section style={{ background: '#1A2E44', color: '#fff', padding: '80px 0', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: -80, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', pointerEvents: 'none' }} />
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 20px' }}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
-            <div className="space-y-7">
-              <div className="inline-flex items-center gap-2 bg-white/10 text-white/80 border border-white/15 px-3.5 py-1.5 rounded-full font-sans text-xs font-semibold uppercase tracking-wide">
-                <Shield className="w-3 h-3" /> Built-in escrow
+            <div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)', padding: '6px 14px', borderRadius: 999, fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', marginBottom: 24 }}>
+                <Shield style={{ width: 12, height: 12 }} /> BUILT-IN ESCROW
               </div>
-              <h2 className="font-serif text-4xl sm:text-5xl font-normal leading-tight">
-                Money is safe<br/>for both sides.
+              <h2 style={{ fontFamily: 'var(--font-dm-serif)', fontSize: 'clamp(36px, 4vw, 52px)', lineHeight: 1.05, margin: '0 0 20px', letterSpacing: '-0.02em' }}>
+                Money is safe<br />for both sides.
               </h2>
-              <p className="font-sans text-base text-white/70 leading-relaxed">
-                Buyer pays. Money is locked in escrow. Seller works. Buyer approves. Money is released. No chasing payments, no lost work.
+              <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, margin: '0 0 32px', maxWidth: 420 }}>
+                Buyer pays. Funds locked in escrow. Seller delivers. Buyer confirms. Payment released. No chasing, no losses, no disputes.
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {[
-                  { Icon: Shield, title: 'Buyer protected', desc: 'Pay only when satisfied' },
-                  { Icon: Clock, title: 'Milestones', desc: 'Pay in stages for big jobs' },
-                  { Icon: Star, title: 'Seller protected', desc: 'Get paid for every delivery' },
-                ].map(({ Icon, title, desc }) => (
-                  <div key={title} className="bg-white/8 border border-white/10 rounded-xl p-4 space-y-2">
-                    <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-                      <Icon className="w-4 h-4 text-white/80" />
+                  { icon: Shield, title: 'Buyer protected', desc: 'Pay only when satisfied' },
+                  { icon: Star, title: 'Milestones', desc: 'Pay in stages for big jobs' },
+                  { icon: Package, title: 'Seller protected', desc: 'Guaranteed payment on delivery' },
+                ].map(({ icon: Icon, title, desc }) => (
+                  <div key={title} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, padding: 16 }}>
+                    <div style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+                      <Icon style={{ width: 16, height: 16, color: 'rgba(255,255,255,0.8)' }} />
                     </div>
-                    <p className="font-sans text-sm font-semibold">{title}</p>
-                    <p className="font-sans text-xs text-white/60">{desc}</p>
+                    <p style={{ fontWeight: 700, fontSize: 13, margin: '0 0 4px' }}>{title}</p>
+                    <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: 0 }}>{desc}</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Flow steps */}
-            <div className="space-y-3">
+            {/* Step flow */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[
-                { n: '01', label: 'Buyer places order & pays', sub: 'Funds locked in escrow immediately via Paystack' },
+                { n: '01', label: 'Buyer places order & pays', sub: 'Funds locked via Paystack immediately' },
                 { n: '02', label: 'Seller completes the work', sub: 'Progress tracked through milestones' },
-                { n: '03', label: 'Buyer confirms & releases', sub: 'One tap to approve each milestone' },
-                { n: '04', label: 'Seller receives naira', sub: 'Directly to any Nigerian bank account' },
+                { n: '03', label: 'Buyer confirms receipt', sub: 'One tap to release payment' },
+                { n: '04', label: 'Seller receives naira', sub: 'Directly to Nigerian bank account' },
               ].map(({ n, label, sub }, i) => (
-                <div key={n} className={`flex items-start gap-4 p-4 rounded-xl border ${i === 3 ? 'border-accent/50 bg-accent/15' : 'border-white/10 bg-white/5'}`}>
-                  <span className="font-serif text-2xl text-white/30 font-normal leading-none mt-0.5 w-8 flex-shrink-0">{n}</span>
+                <div key={n} style={{ display: 'flex', alignItems: 'flex-start', gap: 16, padding: '16px 20px', borderRadius: 14, border: `1px solid ${i === 3 ? 'rgba(194,105,47,0.5)' : 'rgba(255,255,255,0.1)'}`, background: i === 3 ? 'rgba(194,105,47,0.15)' : 'rgba(255,255,255,0.04)' }}>
+                  <span style={{ fontFamily: 'var(--font-dm-serif)', fontSize: 22, color: 'rgba(255,255,255,0.25)', lineHeight: 1, width: 32, flexShrink: 0 }}>{n}</span>
                   <div>
-                    <p className="font-sans text-sm font-semibold">{label}</p>
-                    <p className="font-sans text-xs text-white/55 mt-0.5">{sub}</p>
+                    <p style={{ fontWeight: 600, fontSize: 14, margin: '0 0 3px' }}>{label}</p>
+                    <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: 0 }}>{sub}</p>
                   </div>
                 </div>
               ))}
@@ -379,173 +301,121 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* ── FOR SELLERS / BUYERS ───────────────────────────────────────────── */}
-      <section className="py-16 sm:py-24">
-        <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-card rounded-2xl p-8 sm:p-10 border border-border space-y-5">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Wrench className="w-5 h-5 text-primary" />
+      {/* ━━━ FOR SELLERS + BUYERS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section style={{ maxWidth: 1280, margin: '0 auto', padding: '72px 20px' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {[
+            {
+              tag: 'FOR SELLERS',
+              img: '/artwork-6.jpg',
+              title: 'Sell your skill.\nGet paid fairly.',
+              body: 'No vendor application, no business registration, no middleman. Set your prices, list your work, get paid to your Nigerian bank when you deliver.',
+              points: ['Your shop at maya.com/shop/your-name', 'Withdraw to any Nigerian bank', 'Set prices in naira', 'Milestone payments for large projects'],
+              cta: 'Open your shop',
+              href: '/sell',
+              accent: '#1A2E44',
+            },
+            {
+              tag: 'FOR BUYERS',
+              img: '/artwork-8.jpg',
+              title: 'Quality work.\nMoney protected.',
+              body: 'Pay securely via Paystack — card, bank transfer, or USSD. Your money goes into escrow. Released to the seller only when you confirm you\'re satisfied.',
+              points: ['Browse without signing up', 'Card, bank transfer, or USSD', 'Escrow until you confirm delivery', 'Milestone control for big projects'],
+              cta: 'Browse marketplace',
+              href: '/marketplace',
+              accent: '#C2692F',
+            },
+          ].map(({ tag, img, title, body, points, cta, href, accent }) => (
+            <div key={tag} style={{ background: '#fff', borderRadius: 24, overflow: 'hidden', border: '1px solid #E8E4DE' }}>
+              <div style={{ height: 220, overflow: 'hidden' }}>
+                <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} />
               </div>
-              <div>
-                <h3 className="font-serif text-3xl sm:text-4xl font-normal mb-3">For sellers</h3>
-                <p className="font-sans text-sm text-muted leading-relaxed">No vendor application, no business registration, no middleman cutting your margin. Set your prices, list your work, and get paid to your bank account when you deliver.</p>
+              <div style={{ padding: 32 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', color: accent, display: 'block', marginBottom: 12 }}>{tag}</span>
+                <h3 style={{ fontFamily: 'var(--font-dm-serif)', fontSize: 32, lineHeight: 1.1, margin: '0 0 14px', whiteSpace: 'pre-line' }}>{title}</h3>
+                <p style={{ fontSize: 14, color: '#7A7065', lineHeight: 1.7, margin: '0 0 20px' }}>{body}</p>
+                <ul style={{ margin: '0 0 24px', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {points.map(pt => (
+                    <li key={pt} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                      <span style={{ width: 18, height: 18, borderRadius: '50%', background: `${accent}18`, color: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, flexShrink: 0 }}>✓</span>
+                      {pt}
+                    </li>
+                  ))}
+                </ul>
+                <Link href={href} style={{ display: 'inline-block', background: accent, color: '#fff', padding: '12px 24px', borderRadius: 12, fontWeight: 700, fontSize: 14, textDecoration: 'none' }}>
+                  {cta}
+                </Link>
               </div>
-              <ul className="space-y-2.5">
-                {[
-                  'Your shop at maya.com/shop/your-name',
-                  'Withdraw to any Nigerian bank',
-                  'Set prices in naira',
-                  'Milestone payments for large projects',
-                ].map(t => (
-                  <li key={t} className="flex items-center gap-2.5 font-sans text-sm">
-                    <span className="w-4 h-4 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[9px] font-bold flex-shrink-0">✓</span>
-                    {t}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/sell" className="inline-flex items-center justify-center bg-primary text-primary-foreground px-7 py-3 rounded-xl font-sans text-sm font-semibold hover:bg-primary/90 transition-colors">
-                Open your shop
-              </Link>
             </div>
-
-            <div className="bg-card rounded-2xl p-8 sm:p-10 border border-border space-y-5">
-              <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-                <Shield className="w-5 h-5 text-accent" />
-              </div>
-              <div>
-                <h3 className="font-serif text-3xl sm:text-4xl font-normal mb-3">For buyers</h3>
-                <p className="font-sans text-sm text-muted leading-relaxed">Pay securely with Paystack — card, bank transfer, or USSD. Your money goes into escrow. Released to the seller only when you confirm you're happy.</p>
-              </div>
-              <ul className="space-y-2.5">
-                {[
-                  'Browse without signing up',
-                  'Pay by card, bank transfer, or USSD',
-                  'Escrow holds funds until delivery',
-                  'Milestone-by-milestone control',
-                ].map(t => (
-                  <li key={t} className="flex items-center gap-2.5 font-sans text-sm">
-                    <span className="w-4 h-4 rounded-full bg-accent/15 text-accent flex items-center justify-center text-[9px] font-bold flex-shrink-0">✓</span>
-                    {t}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/marketplace" className="inline-flex items-center justify-center bg-card border border-border text-foreground px-7 py-3 rounded-xl font-sans text-sm font-semibold hover:bg-border/40 transition-colors">
-                Browse marketplace
-              </Link>
-            </div>
-          </div>
+          ))}
         </div>
       </section>
 
-      {/* ── HOW IT WORKS ───────────────────────────────────────────────────── */}
-      <section className="py-16 sm:py-24 bg-card border-y border-border">
-        <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-          <div className="max-w-2xl mb-14">
-            <h2 className="font-serif text-4xl sm:text-5xl font-normal mb-3">From listing to paid</h2>
-            <p className="font-sans text-sm text-muted">Works on the phone you already have. No technical setup.</p>
+      {/* ━━━ PAYSTACK BADGE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <div style={{ background: '#fff', borderTop: '1px solid #E8E4DE', padding: '32px 0' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 20px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: '#1A2E44', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <span style={{ fontFamily: 'var(--font-dm-serif)', color: '#fff', fontSize: 22 }}>₦</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-            {[
-              { n: '1', title: 'List your work', desc: 'Add photos, set your naira price, describe what you do. Shop goes live at maya.com/shop/your-name in minutes.' },
-              { n: '2', title: 'Buyer pays into escrow', desc: 'Buyer pays via Paystack — card, bank transfer, or USSD. Funds held securely. You can see the order immediately.' },
-              { n: '3', title: 'Deliver & get paid', desc: 'Complete the work. Buyer confirms. Funds release to your Maya balance. Withdraw to your Nigerian bank anytime.' },
-            ].map(({ n, title, desc }) => (
-              <div key={n} className="relative pl-14">
-                <div className="absolute left-0 top-0 w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <span className="font-serif text-xl text-primary font-normal">{n}</span>
-                </div>
-                <h3 className="font-sans text-base font-semibold mb-2">{title}</h3>
-                <p className="font-sans text-sm text-muted leading-relaxed">{desc}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-12">
-            <Link href="/sell" className="inline-flex items-center justify-center bg-primary text-primary-foreground px-8 py-3.5 rounded-xl font-sans text-sm font-semibold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
-              Open your shop — free
-            </Link>
+          <div>
+            <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 2px' }}>Payments powered by Paystack</p>
+            <p style={{ fontSize: 13, color: '#7A7065', margin: 0 }}>Card · Bank transfer · USSD · 100% naira · Trusted by thousands of Nigerian businesses</p>
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* ── PAYSTACK BADGE ─────────────────────────────────────────────────── */}
-      <section className="py-14">
-        <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row items-center gap-6 p-8 rounded-2xl bg-card border border-border">
-            <div className="w-14 h-14 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
-              <span className="font-serif text-primary-foreground text-2xl font-normal">₦</span>
-            </div>
-            <div className="text-center sm:text-left flex-1">
-              <h3 className="font-sans text-base font-semibold mb-1">Payments powered by Paystack</h3>
-              <p className="font-sans text-sm text-muted">Pay by card, bank transfer, or USSD. 100% naira. Trusted by thousands of Nigerian businesses. Sellers receive payouts directly to their bank account.</p>
-            </div>
-            <Link href="/sell" className="flex-shrink-0 bg-primary text-primary-foreground px-6 py-3 rounded-xl font-sans text-sm font-semibold hover:bg-primary/90 transition-colors whitespace-nowrap">
-              Get started
-            </Link>
+      {/* ━━━ CTA ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section style={{ background: '#FAFAF8', padding: '80px 20px', textAlign: 'center' }}>
+        <div style={{ maxWidth: 480, margin: '0 auto' }}>
+          <div style={{ width: 56, height: 56, borderRadius: 16, background: '#1A2E44', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+            <span style={{ fontFamily: 'var(--font-dm-serif)', color: '#fff', fontSize: 26 }}>M</span>
           </div>
-        </div>
-      </section>
-
-      {/* ── FINAL CTA ──────────────────────────────────────────────────────── */}
-      <section className="py-20 sm:py-28 bg-card border-t border-border">
-        <div className="mx-auto max-w-xl px-5 sm:px-6 text-center space-y-6">
-          <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center mx-auto">
-            <span className="font-serif text-primary-foreground text-2xl font-normal">M</span>
-          </div>
-          <h2 className="font-serif text-5xl sm:text-6xl font-normal">Start today.</h2>
-          <p className="font-sans text-sm text-muted">Free to join. Free to list. Maya takes 2% when you sell.</p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-            <Link href="/sell" className="inline-flex items-center justify-center bg-primary text-primary-foreground px-8 py-4 rounded-xl font-sans font-semibold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
+          <h2 style={{ fontFamily: 'var(--font-dm-serif)', fontSize: 'clamp(40px, 5vw, 60px)', margin: '0 0 12px', letterSpacing: '-0.02em' }}>Start today.</h2>
+          <p style={{ fontSize: 15, color: '#7A7065', margin: '0 0 32px' }}>Free to join. Free to list. Maya takes 2% when you sell.</p>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link href="/sell" style={{ background: '#1A2E44', color: '#fff', padding: '14px 32px', borderRadius: 14, fontWeight: 700, fontSize: 15, textDecoration: 'none', boxShadow: '0 4px 24px rgba(26,46,68,0.22)' }}>
               Open your shop
             </Link>
-            <Link href="/marketplace" className="inline-flex items-center justify-center bg-background border border-border text-foreground px-8 py-4 rounded-xl font-sans font-semibold hover:bg-border/30 transition-colors">
+            <Link href="/marketplace" style={{ background: '#fff', color: '#0F1923', padding: '14px 32px', borderRadius: 14, fontWeight: 600, fontSize: 15, textDecoration: 'none', border: '1.5px solid #E8E4DE' }}>
               Browse marketplace
             </Link>
           </div>
         </div>
       </section>
 
-      {/* ── FOOTER ─────────────────────────────────────────────────────────── */}
-      <footer className="border-t border-border py-12">
-        <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-8 mb-10">
-            <div className="sm:col-span-1">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-                  <span className="font-serif text-primary-foreground text-sm font-normal">M</span>
+      {/* ━━━ FOOTER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <footer style={{ borderTop: '1px solid #E8E4DE', background: '#fff', padding: '48px 0 32px' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 20px' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <div style={{ width: 30, height: 30, borderRadius: 8, background: '#1A2E44', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontFamily: 'var(--font-dm-serif)', color: '#fff', fontSize: 16 }}>M</span>
                 </div>
-                <span className="font-serif text-lg font-normal">Maya</span>
+                <span style={{ fontFamily: 'var(--font-dm-serif)', fontSize: 18 }}>Maya</span>
               </div>
-              <p className="font-sans text-xs text-muted leading-relaxed max-w-[200px]">Skilled craft marketplace. Secure escrow. Naira payments.</p>
+              <p style={{ fontSize: 13, color: '#7A7065', maxWidth: 220, lineHeight: 1.6, margin: 0 }}>
+                The marketplace for skilled craft businesses. Secure escrow. Naira payments. Zero gatekeeping.
+              </p>
             </div>
-            <div>
-              <h4 className="font-sans text-xs font-bold uppercase tracking-wider text-muted mb-4">Platform</h4>
-              <ul className="space-y-2.5">
-                {([['Marketplace', '/marketplace'], ['Sell on Maya', '/sell'], ['How it works', '/sell#how']] as [string, string][]).map(([label, href]: [string, string]) => (
-                  <li key={label}><Link href={href} className="font-sans text-sm text-muted hover:text-foreground transition-colors">{label}</Link></li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-sans text-xs font-bold uppercase tracking-wider text-muted mb-4">Company</h4>
-              <ul className="space-y-2.5">
-                {([['About', '/about'], ['FAQ', '/faq'], ['Contact', '/contact']] as [string, string][]).map(([label, href]: [string, string]) => (
-                  <li key={label}><Link href={href} className="font-sans text-sm text-muted hover:text-foreground transition-colors">{label}</Link></li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-sans text-xs font-bold uppercase tracking-wider text-muted mb-4">Legal</h4>
-              <ul className="space-y-2.5">
-                {([['Terms', '/terms'], ['Privacy', '/privacy']] as [string, string][]).map(([label, href]: [string, string]) => (
-                  <li key={label}><Link href={href} className="font-sans text-sm text-muted hover:text-foreground transition-colors">{label}</Link></li>
-                ))}
-              </ul>
-            </div>
+            {[
+              { title: 'Platform', links: [['Marketplace', '/marketplace'], ['Sell on Maya', '/sell'], ['Browse', '/marketplace']] },
+              { title: 'Company', links: [['About', '/about'], ['FAQ', '/faq'], ['Contact', '/contact']] },
+              { title: 'Legal', links: [['Terms', '/terms'], ['Privacy', '/privacy']] },
+            ].map(({ title, links }) => (
+              <div key={title}>
+                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', color: '#7A7065', textTransform: 'uppercase', marginBottom: 16 }}>{title}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {(links as [string, string][]).map(([label, href]) => (
+                    <Link key={label} href={href} style={{ fontSize: 13, color: '#7A7065', textDecoration: 'none' }} className="hover:text-[#0F1923] transition-colors">{label}</Link>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
-          <div className="border-t border-border pt-6 flex flex-col sm:flex-row justify-between items-center gap-3">
-            <p className="font-sans text-xs text-muted">© 2025 Maya. All rights reserved.</p>
-            <p className="font-sans text-xs text-muted">Paystack payments · Escrow protection · 2% per sale</p>
+          <div style={{ borderTop: '1px solid #E8E4DE', paddingTop: 24, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+            <p style={{ fontSize: 12, color: '#7A7065', margin: 0 }}>© 2025 Maya. All rights reserved.</p>
+            <p style={{ fontSize: 12, color: '#7A7065', margin: 0 }}>Paystack payments · Escrow protection · 2% per sale</p>
           </div>
         </div>
       </footer>

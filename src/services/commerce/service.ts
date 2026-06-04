@@ -75,11 +75,6 @@ function toOrderStateParams(order: OrderWithRelations): OrderStateParams {
 
 // Breez SDK Liquid invoice constraints. Generating an invoice below the
 // minimum or above the maximum throws `Amount must be between 100 and
-// 25000000`. Catch it here so the user gets a friendly 400 instead of a
-// 500, and so we never insert an Order row that can't be paid.
-const MIN_INVOICE_SATS = 100n;
-const MAX_INVOICE_SATS = 25_000_000n;
-
 export interface CreateOrderParams {
   productId: string;
   quantity: number;
@@ -88,38 +83,28 @@ export interface CreateOrderParams {
   encryptedShipping?: string;
 }
 
-export async function createOrder(params: CreateOrderParams): Promise<Order & { ngnDisplay: string }> {
+export async function createOrder(params: CreateOrderParams): Promise<Order & { ngnDisplay: string; amountKobo: number }> {
   const { productId, quantity, buyerId, encryptedShipping } = params;
 
-  const product = await catalogService.getProduct(productId);
-  if (product.status !== 'ACTIVE') throw new ApiError('OUT_OF_STOCK', 'Product is not available', 409);
-  if (product.stock < quantity) throw new ApiError('OUT_OF_STOCK', 'Not enough stock', 409);
+  // Single query: product + seller in one round-trip
+  const productRow = await prisma.product.findUnique({
+    where: { id: productId },
+    include: { seller: { select: { id: true, role: true } } },
+  });
 
-  const seller = await catalogService.getSellerById(product.sellerId);
-  if (!seller) throw new ApiError('NOT_FOUND', 'Seller not found', 404);
+  if (!productRow) throw new ApiError('NOT_FOUND', 'Product not found', 404);
+  if (productRow.status !== 'ACTIVE') throw new ApiError('OUT_OF_STOCK', 'Product is not available', 409);
+  if (productRow.stock < quantity) throw new ApiError('OUT_OF_STOCK', 'Not enough stock', 409);
+  if (productRow.seller.role !== 'SELLER') throw new ApiError('NOT_FOUND', 'Seller not found', 404);
 
-  const priceSatsBig = BigInt(product.priceSats);
-  const shippingSatsBig = BigInt(product.shippingSats);
+  const priceSatsBig = productRow.priceSats;
+  const shippingSatsBig = productRow.shippingSats;
   const totalSats = priceSatsBig * BigInt(quantity) + shippingSatsBig;
 
-  if (totalSats < MIN_INVOICE_SATS) {
-    throw new ApiError(
-      'VALIDATION_ERROR',
-      `Total of ${formatNgn(satsToNgn(totalSats))} is below Lightning's minimum (${formatNgn(satsToNgn(MIN_INVOICE_SATS))}). Ask the seller to raise the price or order more than one.`,
-      400,
-    );
-  }
-  if (totalSats > MAX_INVOICE_SATS) {
-    throw new ApiError(
-      'VALIDATION_ERROR',
-      `Total of ${formatNgn(satsToNgn(totalSats))} exceeds Lightning's per-invoice maximum (${formatNgn(satsToNgn(MAX_INVOICE_SATS))}).`,
-      400,
-    );
-  }
-
+  // createOrder already includes orderWithRelations — no need for a second findOrderById
   const order = await repository.createOrder({
     buyer: { connect: { id: buyerId } },
-    seller: { connect: { id: product.sellerId } },
+    seller: { connect: { id: productRow.sellerId } },
     totalSats,
     shippingSats: shippingSatsBig,
     encryptedShipping: encryptedShipping ?? null,
@@ -128,31 +113,13 @@ export async function createOrder(params: CreateOrderParams): Promise<Order & { 
     },
   });
 
-  // Generate invoice on the platform wallet (not a per-seller wallet).
-  const invoice = await createPlatformInvoice(
-    totalSats,
-    `Maya order #${order.id} — ${product.title}`,
-  );
-
-  // Track which seller this payment belongs to so we can credit them on settlement.
-  await trackPendingPayment({
-    paymentHash: invoice.paymentHash,
-    sellerId: product.sellerId,
-    amountSats: totalSats,
-    orderId: order.id,
-    description: `Order #${order.id} — ${product.title}`,
-    expiresAt: invoice.expiresAt,
-  });
-
-  await repository.updateOrderInvoice(order.id, invoice.bolt11, invoice.paymentHash);
-
-  const updatedOrder = await repository.findOrderById(order.id);
-  if (!updatedOrder) throw new ApiError('INTERNAL_ERROR', 'Order creation failed', 500);
-
-  const ngnAmount = await satsToNgnLive(totalSats);
+  // Demo rate — synchronous, no network call
+  const demoRate = BigInt(process.env.DEMO_BTC_NGN_RATE ?? '145000000');
+  const ngnAmount = (totalSats * demoRate) / 100_000_000n;
   const ngnDisplay = formatNgn(ngnAmount);
+  const amountKobo = Number(ngnAmount) * 100;
 
-  return { ...mapOrder(updatedOrder), ngnDisplay };
+  return { ...mapOrder(order), ngnDisplay, amountKobo };
 }
 
 // ============================================================================
@@ -449,6 +416,24 @@ export async function markDelivered(orderId: string, buyerId: string): Promise<O
     throw new ApiError('VALIDATION_ERROR', 'Order must be SHIPPED before it can be marked delivered', 400);
   }
   const updated = await repository.markOrderDelivered(orderId);
+
+  // Credit the seller's ledger and release the escrow — both are non-fatal
+  // side effects. The order is already DELIVERED at this point.
+  void Promise.all([
+    recordEntry({
+      userId: order.sellerId,
+      amountSats: order.totalSats,
+      type: 'SALE',
+      refId: order.id,
+      description: `Sale — order #${order.id}`,
+    }).catch((err) => console.error('Ledger credit failed for order', order.id, err)),
+
+    prisma.escrow.updateMany({
+      where: { orderId: order.id, status: { in: ['FUNDED', 'PARTIAL'] } },
+      data: { status: 'RELEASED', releasedAt: new Date() },
+    }).catch((err) => console.error('Escrow release failed for order', order.id, err)),
+  ]);
+
   void publishOrderStateEvent('delivered', toOrderStateParams(updated), null)
     .then(() => repository.updateOrderCurrentState(orderId, 'delivered'))
     .catch((err) => console.error('kind 30050 delivered failed:', err));
