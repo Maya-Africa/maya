@@ -9,13 +9,14 @@ import type { ProductCategory } from '@/types/shared'
 // straight through to listProducts().
 const CATEGORIES: { label: string; value: ProductCategory | null }[] = [
   { label: 'All', value: null },
-  { label: 'Paintings', value: 'paintings' },
-  { label: 'Jewelry', value: 'jewelry' },
-  { label: 'Textiles', value: 'textiles' },
+  { label: 'Tailoring', value: 'tailoring' },
+  { label: 'Carpentry', value: 'carpentry' },
+  { label: 'Jewellery', value: 'jewelry' },
+  { label: 'Art', value: 'art' },
+  { label: 'Ceramics', value: 'ceramics' },
   { label: 'Leather', value: 'leather' },
-  { label: 'Pottery', value: 'pottery' },
-  { label: 'Sculpture', value: 'sculpture' },
-  { label: 'Prints', value: 'prints_digital' },
+  { label: 'Repairs', value: 'repairs' },
+  { label: 'Crafts', value: 'crafts' },
   { label: 'Other', value: 'other' },
 ]
 
@@ -32,16 +33,16 @@ export default function CategoryPills({ onCategoryChange }: CategoryPillsProps) 
   }
 
   return (
-    <div className="sticky top-0 z-10 bg-maya-background pt-6 pb-6 border-b border-[#E5DDD0]">
-      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide pl-5 pr-5">
+    <div className="sticky top-0 z-10 bg-background pt-4 pb-4 border-b border-border">
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide pl-5 pr-5">
         {CATEGORIES.map((category) => (
           <button
             key={category.label}
             onClick={() => handleCategoryChange(category.label, category.value)}
-            className={`px-3 py-2 rounded-full whitespace-nowrap text-sm font-medium transition-all min-h-[44px] flex items-center ${
+            className={`px-4 py-2 rounded-full whitespace-nowrap text-xs font-semibold transition-all min-h-[36px] flex items-center uppercase tracking-wide ${
               selectedLabel === category.label
-                ? 'bg-[#2D5F5D] text-white border-none'
-                : 'bg-white border-[1.5px] border-[#2D5F5D] text-[#2D5F5D]'
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'bg-card border border-border text-muted hover:border-primary/40 hover:text-foreground'
             }`}
           >
             {category.label}

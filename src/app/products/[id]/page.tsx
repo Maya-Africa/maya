@@ -18,13 +18,14 @@ const NGN_PER_BTC = 145_000_000
 const SATS_PER_BTC = 100_000_000
 
 const CATEGORY_LABELS: Record<ProductCategory, string> = {
-  paintings: 'Paintings',
-  jewelry: 'Jewelry',
-  textiles: 'Textiles',
-  leather: 'Leather',
-  pottery: 'Pottery',
-  sculpture: 'Sculpture',
-  prints_digital: 'Prints & Digital',
+  tailoring: 'Tailoring',
+  carpentry: 'Carpentry',
+  jewelry: 'Jewellery',
+  art: 'Art & Painting',
+  ceramics: 'Ceramics',
+  leather: 'Leather & Bags',
+  repairs: 'Repairs',
+  crafts: 'Handmade Crafts',
   other: 'Other',
 }
 

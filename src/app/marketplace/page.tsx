@@ -24,6 +24,8 @@ interface CardProduct {
   title: string
   priceNaira: number
   priceSats: number
+  sellerName?: string
+  category?: string
 }
 
 // "₦25,000" → 25000. Fallback computes from priceSats if the formatted
@@ -57,6 +59,8 @@ function toCardProduct(p: ApiProduct): CardProduct {
     title: p.title,
     priceNaira: parseNgnDisplay(p.priceNgnDisplay ?? '', p.priceSats),
     priceSats: parseSatsNumber(p.priceSats),
+    sellerName: p.sellerDisplayName ?? p.sellerUsername,
+    category: p.category,
   }
 }
 
@@ -197,6 +201,8 @@ function BrowsePageContent() {
                     title={product.title}
                     priceNaira={product.priceNaira}
                     priceSats={product.priceSats}
+                    sellerName={product.sellerName}
+                    category={product.category}
                   />
                 </Link>
               ))}

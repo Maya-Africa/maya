@@ -99,7 +99,7 @@ const mockProduct = {
   priceSats: '10000',
   priceNgnDisplay: '₦14,500',
   shippingSats: '500',
-  category: 'textiles' as const,
+  category: 'crafts' as const,
   images: ['https://res.cloudinary.com/demo/image/upload/t.jpg'],
   isDigital: false,
   stock: 5,

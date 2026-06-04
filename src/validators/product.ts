@@ -1,13 +1,14 @@
 import { z } from 'zod';
 
 const ProductCategorySchema = z.enum([
-  'paintings',
+  'tailoring',
+  'carpentry',
   'jewelry',
-  'textiles',
+  'art',
+  'ceramics',
   'leather',
-  'pottery',
-  'sculpture',
-  'prints_digital',
+  'repairs',
+  'crafts',
   'other',
 ]);
 

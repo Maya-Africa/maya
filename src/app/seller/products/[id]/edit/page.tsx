@@ -20,13 +20,14 @@ const NGN_PER_BTC = 145_000_000
 const SATS_PER_BTC = 100_000_000
 
 const CATEGORIES: { label: string; value: ProductCategory }[] = [
-  { label: 'Paintings', value: 'paintings' },
-  { label: 'Jewelry', value: 'jewelry' },
-  { label: 'Textiles', value: 'textiles' },
-  { label: 'Leather', value: 'leather' },
-  { label: 'Pottery', value: 'pottery' },
-  { label: 'Sculpture', value: 'sculpture' },
-  { label: 'Prints & Digital', value: 'prints_digital' },
+  { label: 'Tailoring', value: 'tailoring' },
+  { label: 'Carpentry', value: 'carpentry' },
+  { label: 'Jewellery', value: 'jewelry' },
+  { label: 'Art & Painting', value: 'art' },
+  { label: 'Ceramics', value: 'ceramics' },
+  { label: 'Leather & Bags', value: 'leather' },
+  { label: 'Repairs', value: 'repairs' },
+  { label: 'Handmade Crafts', value: 'crafts' },
   { label: 'Other', value: 'other' },
 ]
 

@@ -44,13 +44,14 @@ export interface SellerInfo {
 // ============================================================================
 
 export type ProductCategory =
-  | 'paintings'
+  | 'tailoring'
+  | 'carpentry'
   | 'jewelry'
-  | 'textiles'
+  | 'art'
+  | 'ceramics'
   | 'leather'
-  | 'pottery'
-  | 'sculpture'
-  | 'prints_digital'
+  | 'repairs'
+  | 'crafts'
   | 'other';
 
 export type ProductStatus = 'ACTIVE' | 'SOLD_OUT' | 'UNLISTED';
