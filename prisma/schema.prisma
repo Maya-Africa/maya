@@ -1,0 +1,333 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum LedgerEntryType {
+  SALE // sats credited to seller from a buyer payment
+  WITHDRAWAL // sats debited when seller withdraws to NGN or Lightning
+  REFUND // sats debited when a refund is issued (v2)
+  ADJUSTMENT // manual correction (audit trail required)
+}
+
+model User {
+  id            String   @id @default(cuid())
+  npub          String   @unique // Nostr public key (hex, 64 chars — NOT bech32)
+  username      String   @unique
+  displayName   String?
+  avatar        String?
+  about         String?
+  longBio       String?  @db.Text // NIP-23 long-form seller bio (markdown)
+  location      String?  // e.g., "Lagos, Nigeria" — shown on storefront
+  stallStatus   String   @default("open") // kind 30053: "open" | "vacation" | "closed"
+  stallStatusMessage String? // optional message shown to buyers when not open
+  lightningAddr String?  @unique // e.g., "adaeze@bitscy.com"
+  role          UserRole @default(BUYER)
+  closedAt      DateTime? // non-null = soft shop closure; null = open
+
+  // Client-side encrypted key storage.
+  // The server NEVER sees the password or plaintext nsec.
+  // The client does all crypto (PBKDF2 + AES-GCM) and sends only the encrypted blob.
+  encryptedKey String?
+  salt         String? // PBKDF2 salt (base64url)
+  iv           String? // AES-GCM IV (base64url)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products          Product[]
+  ordersAsBuyer     Order[]            @relation("BuyerOrders")
+  ordersAsSeller    Order[]            @relation("SellerOrders")
+  escrowsAsBuyer    Escrow[]           @relation("BuyerEscrows")
+  escrowsAsSeller   Escrow[]           @relation("SellerEscrows")
+  bankAccounts      BankAccount[]
+  ledgerEntries     LedgerEntry[]
+  payouts           Payout[]
+  pushSubscriptions PushSubscription[]
+
+  @@index([role])
+}
+
+model Product {
+  id           String        @id @default(cuid())
+  sellerId     String
+  seller       User          @relation(fields: [sellerId], references: [id])
+  title        String
+  description  String        @db.Text
+  priceSats    BigInt
+  shippingSats BigInt        @default(0)
+  category     String
+  images       String[] // Cloudinary URLs
+  isDigital    Boolean       @default(false)
+  digitalUrl   String? // For digital products only — stored encrypted in v2
+  stock        Int           @default(1)
+  status       ProductStatus @default(ACTIVE)
+
+  // Nostr backref — the kind 30018 event ID published when this product was created/updated
+  nostrEventId String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orderItems OrderItem[]
+
+  @@index([sellerId, status])
+  @@index([status, createdAt])
+  @@index([category, status])
+}
+
+model Order {
+  id       String @id @default(cuid())
+  buyerId  String
+  buyer    User   @relation("BuyerOrders", fields: [buyerId], references: [id])
+  sellerId String
+  seller   User   @relation("SellerOrders", fields: [sellerId], references: [id])
+
+  items        OrderItem[]
+  totalSats    BigInt
+  shippingSats BigInt      @default(0)
+
+  // Lightning payment details
+  invoiceBolt11 String?
+  paymentHash   String? @unique
+
+  status OrderStatus @default(PENDING)
+
+  // NIP-04 encrypted shipping address (only seller can decrypt)
+  encryptedShipping String? @db.Text
+
+  // Optional seller note when shipping
+  shippingNote String?
+
+  // Nostr backref — the kind 30019 event ID
+  nostrEventId String? @unique
+
+  // kind 30050 state mirror — updated by Commerce on each state transition
+  currentState String @default("pending")
+
+  escrow    Escrow?
+
+  createdAt DateTime  @default(now())
+  paidAt    DateTime?
+  shippedAt DateTime?
+
+  @@index([buyerId, createdAt])
+  @@index([sellerId, status])
+  @@index([status])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int     @default(1)
+  priceSats BigInt
+
+  @@index([orderId])
+}
+
+model BankAccount {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  bankName      String
+  accountNumber String
+  accountName   String
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Payout {
+  id            String       @id @default(cuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id])
+  bankAccountId String
+  amountSats    BigInt
+  amountNgn     BigInt
+  status        PayoutStatus @default(PENDING)
+  externalId    String? // Bitnob payout ID (real, from sandbox API in v1)
+  failureReason String?
+  createdAt     DateTime     @default(now())
+  completedAt   DateTime?
+
+  @@index([userId, createdAt])
+}
+
+// Mirrors kind 30051 Nostr review events for fast DB reads.
+// Parameterized-replaceable by orderId — one review per buyer per order.
+model Review {
+  id           String   @id @default(cuid())
+  orderId      String   @unique
+  buyerId      String
+  sellerId     String
+  rating       Int      // 1–5
+  content      String   @db.Text
+  nostrEventId String?  @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([sellerId, createdAt])
+  @@index([buyerId])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  endpoint  String   @unique @db.Text
+  p256dh    String   @db.Text
+  auth      String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// LedgerEntry is the append-only record of every change to a
+// seller's sat balance. A seller's current balance is computed
+// as SUM(amountSats) WHERE userId = sellerId. Entries are
+// immutable; corrections use the ADJUSTMENT type, never an UPDATE.
+model LedgerEntry {
+  id              String          @id @default(cuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id])
+  amountSats      BigInt // positive = credit, negative = debit
+  type            LedgerEntryType
+  refId           String? // OrderId for SALE, PayoutId for WITHDRAWAL, etc.
+  description     String // human-readable, for audit trail
+  recordedNgnRate BigInt // BTC/NGN rate from CoinGecko at time of entry
+  createdAt       DateTime        @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// PendingPayment is short-lived. Maps an inbound Lightning paymentHash
+// to the seller and order it belongs to. Created when an invoice is
+// generated; deleted when the payment settles or expires.
+model PendingPayment {
+  paymentHash String   @id
+  sellerId    String
+  amountSats  BigInt
+  orderId     String? // null if direct LNURL pay outside marketplace flow
+  description String
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime // BOLT-11 expiry, typically 1 hour from creation
+
+  @@index([orderId])
+  @@index([sellerId])
+  @@index([expiresAt])
+}
+
+// ── Escrow ────────────────────────────────────────────────────────────────────
+// Escrow holds buyer funds until the seller delivers. Funds are released
+// manually by the buyer or automatically after a dispute window.
+model Escrow {
+  id          String       @id @default(cuid())
+  buyerId     String
+  buyer       User         @relation("BuyerEscrows", fields: [buyerId], references: [id])
+  sellerId    String
+  seller      User         @relation("SellerEscrows", fields: [sellerId], references: [id])
+  orderId     String?      @unique
+  order       Order?       @relation(fields: [orderId], references: [id])
+
+  title       String
+  description String?      @db.Text
+  amountKobo  BigInt
+  status      EscrowStatus @default(PENDING)
+
+  milestones  Milestone[]
+  payments    PaystackPayment[]
+
+  fundedAt    DateTime?
+  releasedAt  DateTime?
+  refundedAt  DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([buyerId])
+  @@index([sellerId])
+}
+
+model Milestone {
+  id          String          @id @default(cuid())
+  escrowId    String
+  escrow      Escrow          @relation(fields: [escrowId], references: [id])
+  title       String
+  description String?         @db.Text
+  amountKobo  BigInt
+  position    Int
+  status      MilestoneStatus @default(PENDING)
+  releasedAt  DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([escrowId, position])
+}
+
+// Tracks Paystack payment attempts (charge.success confirms funding)
+model PaystackPayment {
+  id          String   @id @default(cuid())
+  reference   String   @unique
+  status      String   @default("pending") // pending | success | failed | abandoned
+  amountKobo  BigInt
+  buyerId     String
+  orderId     String?
+  escrowId    String?
+  escrow      Escrow?  @relation(fields: [escrowId], references: [id])
+  paidAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([buyerId])
+  @@index([orderId])
+  @@index([escrowId])
+}
+
+enum EscrowStatus {
+  PENDING    // created, not yet funded
+  FUNDED     // buyer paid via Paystack; held in escrow
+  PARTIAL    // some milestones released
+  RELEASED   // all funds released to seller
+  REFUNDED   // funds returned to buyer
+  DISPUTED   // under manual review
+}
+
+enum MilestoneStatus {
+  PENDING    // not yet due
+  IN_PROGRESS
+  SUBMITTED  // seller marked done, awaiting buyer approval
+  RELEASED   // buyer released this milestone's funds
+  DISPUTED
+}
+
+enum UserRole {
+  BUYER
+  SELLER
+}
+
+enum ProductStatus {
+  ACTIVE
+  SOLD_OUT
+  UNLISTED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PayoutStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
